@@ -16,9 +16,9 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(57600);
   servo1.attach(i3ServoPin);
-//  servo2.attach(i2ServoPin);
-//  servo3.attach(i3ServoPin);
-//  servo4.attach(i4ServoPin);
+  servo2.attach(i2ServoPin);
+  servo3.attach(i3ServoPin);
+  servo4.attach(i4ServoPin);
 }
 
 void loop() {
@@ -32,12 +32,12 @@ void loop() {
 
   // code for servo 4
   if(iVal < 400){
-    servo1.write(0);
+    servo4.write(0);
   } else if ((iVal > 400) && (iVal < 700)){
-    servo1.write(90);
+    servo4.write(90);
   } else {
     Serial.println("entered else clause");
-    servo1.write(180);
+    servo4.write(180);
   }
   delay(500);
 }
