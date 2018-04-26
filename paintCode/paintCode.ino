@@ -1,6 +1,14 @@
 
 #include <Servo.h>
 
+const int FAST_LEFT = 0;
+const int SLOW_LEFT = 52;
+const int STOP = 70;
+const int SLOW_RIGHT = 82;
+const int FAST_RIGHT = 180;
+
+const int LEFT_BOUNDARY = 230;
+const int RIGHT_BOUNDARY = 1000;
 
 Servo servo1;
 Servo servo2;
@@ -17,14 +25,7 @@ const int i3ServoPin = 9;
 const int i4ServoPin = 10;
 const int iPotPinS1 = A3;
 const int iPotPinS2 = A2;
-const int iPotPinS3 = A0;
-int iA2;
-int Pot;
-int i;
-int prev_loc1;
-int new1;
-int step1;
-
+const int iPotPinS3 = A0; 
 
 int S1_LB = 70;
 int S1_UB = 150;
@@ -41,14 +42,6 @@ float stepSize3;
 int PL1 = 160;
 int PL2 = 70;
 int PL3 = 145;
-
-Servo baseplate_servo;
-Servo axis_servo;
-int pot_val;
-int iVal;
-int curr_speed_dir;
-
-
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(57600);
@@ -63,11 +56,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  iPotS3 = (analogRead(iPotPinS3))/5;
-  iPotS2 = (analogRead(iPotPinS2))/5;
   iPotS1 = (analogRead(iPotPinS1))/5;
-
-  
+  iPotS2 = (analogRead(iPotPinS2))/5;
+  iPotS3 = (analogRead(iPotPinS3))/5;
 
   if (iPotS2 < S2_LB)
   {
