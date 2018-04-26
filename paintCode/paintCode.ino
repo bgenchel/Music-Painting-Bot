@@ -1,4 +1,3 @@
-
 #include <Servo.h>
 
 const int FAST_LEFT = 0;
@@ -6,7 +5,6 @@ const int SLOW_LEFT = 52;
 const int STOP = 70;
 const int SLOW_RIGHT = 82;
 const int FAST_RIGHT = 180;
-
 const int LEFT_BOUNDARY = 230;
 const int RIGHT_BOUNDARY = 1000;
 
