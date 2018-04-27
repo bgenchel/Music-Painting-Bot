@@ -20,11 +20,11 @@ int Mid2 = 60;
 int Mid3 = 135;
 
 int Left1 = 100;
-int Left2 = 80;
+int Left2 = 100;
 int Left3 = 165;
 
 int Right1 = 100;
-int Right2 = 80;
+int Right2 = 100;
 int Right3 = 105;
 
 int init1 = Mid1;
@@ -42,9 +42,9 @@ int iPosS1=init1;
 int iPosS2=init2;
 int iPosS3=init3;
 
-int PL1 = init1;
-int PL2 = init2;
-int PL3 = init3;
+int PrevLoc1= init1;
+int PrevLoc2= init2;
+int PrevLoc3 = init3;
 
 int iModeS3 = 1;
 int PModeS3 = 1;
@@ -101,6 +101,8 @@ void setup() {
 
 void loop() {
 
+  Serial.print(PrevLoc2);
+  Serial.println(PrevLoc1);
   if (Serial.available())
   {
     iPosS1 = Serial.read();
@@ -109,43 +111,43 @@ void loop() {
   }
 
   
-  if (iPosS2 != PL2)
+  if (iPosS2 != PrevLoc2)
   {
     // get number of steps
-    num_steps = (abs(iPosS2 - PL2))/step_size;
+    num_steps = (abs(iPosS2 - PrevLoc2))/step_size;
 
-    //iPosS1 = PL1 + (PL2 - iPosS2) / 2;
+    //iPosS1 = PrevLoc1 + (PrevLoc2 - iPosS2) / 2;
     // draw upper half
     if (iPosS2 >= init2)
     {
       // stroke up
-      if (iPosS2 > PL2)
+      if (iPosS2 > PrevLoc2)
       {
-        iPosS1 =  (iPosS2-PL2 ) / 10 * 2;
+        iPosS1 =  (iPosS2-PrevLoc2 ) / 10 * 2;
         for (i = 0; i<num_steps; i++)
         {
-          servo1.write(PL1 - step_size_ratio21*step_size);
-          PL1 = PL1 - step_size_ratio21*step_size;
-          servo2.write(PL2 + step_size);
-          PL2 = PL2 + step_size;
+          servo1.write(PrevLoc1 - step_size_ratio21*step_size);
+          PrevLoc1 = PrevLoc1 - step_size_ratio21*step_size;
+          servo2.write(PrevLoc2 + step_size);
+          PrevLoc2 = PrevLoc2 + step_size;
           delay(10);
         }
-        iPosS1 = PL1 + iPosS1;
+        iPosS1 = PrevLoc1 + iPosS1;
         
       }
       // stroke down
       else
       {
-        iPosS1 =  (PL2 - iPosS2) / 10 * 3;
+        iPosS1 =  (PrevLoc2 - iPosS2) / 10 * 3;
         for (i = 0; i<num_steps; i++)
         {
-          servo2.write(PL2 - step_size);
-          PL2 = PL2 - step_size;
-          servo1.write(PL1 + step_size_ratio21*step_size);
-          PL1 = PL1 + step_size_ratio21*step_size;
+          servo2.write(PrevLoc2 - step_size);
+          PrevLoc2 = PrevLoc2 - step_size;
+          servo1.write(PrevLoc1 + step_size_ratio21*step_size);
+          PrevLoc1 = PrevLoc1 + step_size_ratio21*step_size;
           delay(10);
         }
-        iPosS1 = PL1 + iPosS1;
+        iPosS1 = PrevLoc1 + iPosS1;
       }
     }
     // equals center value
@@ -158,43 +160,46 @@ void loop() {
     // draw lower half
     else 
     {
-      // stroke up
-      if (iPosS2 > PL2)
-      {
-        for (i = 0; i<num_steps; i++)
-        {
-          servo1.write(PL1 - step_size);
-          PL1 = PL1 - step_size;
-          servo2.write(PL2 - step_size);
-          PL2 = PL2 - step_size;
-          delay(10);
-        }
-      }
-      // stroke down
-      else
-      {
-        for (i = 0; i<num_steps; i++)
-        {
-//          Serial.print("here");
-          servo2.write(PL2 + step_size);
-          PL2 = PL2 + step_size;        
-          servo1.write(PL1 + step_size);
-          PL1 = PL1 + step_size;
-          delay(10);
-        }
-      }
+//      // stroke up
+//      if (iPosS2 > PrevLoc2)
+//      {
+//        for (i = 0; i<num_steps; i++)
+//        {
+//          servo1.write(PrevLoc1 - step_size);
+//          PrevLoc1 = PrevLoc1 - step_size;
+//          servo2.write(PrevLoc2 - step_size);
+//          PrevLoc2 = PrevLoc2 - step_size;
+//          delay(10);
+//        }
+//      }
+//      // stroke down
+//      else
+//      {
+//        for (i = 0; i<num_steps; i++)
+//        {
+//
+//          servo2.write(PrevLoc2 + step_size);
+//          PrevLoc2 = PrevLoc2 + step_size;        
+//          servo1.write(PrevLoc1 + step_size);
+//          PrevLoc1 = PrevLoc1 + step_size;
+//          delay(10);
+//        }
+//      }
     }
-    Serial.print(PL1);
+    Serial.print(PrevLoc1);
     Serial.print(" ");
     Serial.println(iPosS1);
     servo2.write(iPosS2);
     servo1.write(iPosS1);
-    PL2 = iPosS2;
-    PL1 = iPosS1;
+    PrevLoc2 = iPosS2;
+    PrevLoc1 = iPosS1;
   }
   
   if (iModeS3 != PModeS3)
   {
+
+   
+        
     if (iModeS3 == 0)
     {
       init1 = Left1;
@@ -218,25 +223,42 @@ void loop() {
  
     for (i = 0; i < num_init_steps; i++)
     {
-      initdir1 = (init1 - PL1) / num_init_steps;
-      initdir2 = (init2 - PL2) / num_init_steps;
-      initdir3 = (init3 - PL3) / num_init_steps;
-
-      servo1.write(PL1 + initdir1);
-      servo2.write(PL2 + initdir2);
-      servo3.write(PL3 + initdir3);
-
-      PL1 = PL1 + initdir1;
-      PL2 = PL2 + initdir2;
-      PL3 = PL3 + initdir3;
+      //bug
+      initdir1 = (init1 - PrevLoc1) / (num_init_steps-i);
+      initdir2 = (init2 - PrevLoc2) / (num_init_steps-i);
+      initdir3 = (init3 - PrevLoc3) / (num_init_steps-i);
+      
+        
+      if (iModeS3 == 1)
+      {
+        
+        servo2.write(PrevLoc2 + initdir2);
+        servo3.write(PrevLoc3 + initdir3);
+        servo1.write(PrevLoc1 + initdir1);
+        //Serial.println(PrevLoc1);
+    
+    
+      
+      }else{
+        
+        servo1.write(PrevLoc1 + initdir1);
+        servo2.write(PrevLoc2 + initdir2);
+        servo3.write(PrevLoc3 + initdir3);
+      }
+      delay(10);
+      
+      PrevLoc1 = PrevLoc1 + initdir1;
+      PrevLoc2 = PrevLoc2 + initdir2;
+      PrevLoc3 = PrevLoc3 + initdir3;
       delay(10);
     }
+    
     servo1.write(init1);
-    PL1 = init1;
+    PrevLoc1 = init1;
     servo2.write(init2);
-    PL2 = init2;
+    PrevLoc2 = init2;
     servo3.write(init3);
-    PL3 = init3;
+    PrevLoc3 = init3;
     PModeS3 = iModeS3;
       
   }
