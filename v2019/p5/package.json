@@ -1,0 +1,21 @@
+{
+  "name": "musical-painting-arm-viz",
+  "description": "for tech ensemble spring 2019",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bgenchel/Music-Painting-Bot.git"
+  },
+  "version": "0.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "connect": "^3.6.6",
+    "express": "^4.16.3",
+    "fs": "0.0.1-security",
+    "p5": "^0.7.3",
+    "serve-static": "^1.13.2"
+  }
+}
