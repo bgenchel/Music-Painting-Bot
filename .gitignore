@@ -3,3 +3,4 @@
 *.asd
 Icon*
 .DS_Store
+node_modules/
