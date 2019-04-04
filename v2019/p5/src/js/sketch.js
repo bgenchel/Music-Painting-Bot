@@ -7,13 +7,18 @@ let samples;
 let maxBoids = 250;
 let maxCollisions = 25;
 
+let oscClient = new OSCClient();
+
+let sample_fnames = ['../res/sounds/tennyson_bell.mp3', 
+                     '../res/sounds/tennyson_bell2.mp3', 
+                     '../res/sounds/tennyson_bell3.mp3', 
+                     '../res/sounds/tennyson_bell5.mp3', 
+                     '../res/sounds/tennyson_bell6.mp3', 
+                     '../res/sounds/tennyson_bell7.mp3'];
+
+let note_nums = [0, 2, 4, 7, 9, 11];
+
 function preload() {
-    let sample_fnames = ['../res/sounds/tennyson_bell.mp3', 
-                         '../res/sounds/tennyson_bell2.mp3', 
-                         '../res/sounds/tennyson_bell3.mp3', 
-                         '../res/sounds/tennyson_bell5.mp3', 
-                         '../res/sounds/tennyson_bell6.mp3', 
-                         '../res/sounds/tennyson_bell7.mp3'];
     samples = [];
     soundFormats('mp3', 'ogg');
     for(var idx in sample_fnames) {
@@ -31,7 +36,7 @@ function setup() {
     flock = new Flock();
     // Add an initial set of boids into the system
     newColor();
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 50; i++) {
         let b = new Boid(width / 2 + random(100), height / 2 + random(100), boidColor, idCounter);
         flock.addBoid(b);
     }
@@ -133,11 +138,14 @@ VirtualArm.prototype.segment = function(x, y, a, sw) {
 
 // Flock object
 // Does very little, simply manages the array of all the boids
-
 function Flock() {
     // An array for all the boids
     this.boids = []; // Initialize the array
     this.collisions = [];
+
+    this.sequenceIndex = 0;
+    this.sequenceTimer = 0;
+    this.sequenceTempo = 100;
 }
 
 Flock.prototype.run = function() {
@@ -146,8 +154,8 @@ Flock.prototype.run = function() {
     
     for (let i = 0; i < this.boids.length; i++) {
         let curr = this.boids[i];
-        // Passing the entire list of boids to each boid individually
-        curr.run(this.boids);
+        // Passing the entire list of boids to each boid individually, along with index
+        curr.run(this.boids, i);
         if (curr.time > curr.lifespan) {
             boidKillList.push(i);
         }
@@ -167,6 +175,13 @@ Flock.prototype.run = function() {
     
     for (let idx in collisionKillList) {
         this.collisions.splice(collisionKillList[idx], 1);
+    }
+
+    this.sequenceTimer += 1;
+    if (this.sequenceIndex >= this.collisions.length) this.sequenceIndex = 0;
+    if (this.sequenceTimer === this.sequenceTempo) {
+        this.collisions[this.sequenceIndex].replay();
+        this.sequenceIndex++;
     }
 }
 
@@ -204,10 +219,12 @@ function Boid(x, y, color, gID) {
     
     this.time = 0;
     this.lifespan = 600;
+
+    this.collided = false;
 }
 
-Boid.prototype.run = function(boids) {
-    this.flock(boids);
+Boid.prototype.run = function(boids, cid) {  // cid = current index
+    this.flock(boids, cid);
     this.update();
     this.borders();
     this.render();
@@ -220,7 +237,7 @@ Boid.prototype.applyForce = function(force) {
 }
 
 // We accumulate a new acceleration each time based on three rules
-Boid.prototype.flock = function(boids) {
+Boid.prototype.flock = function(boids, cid) {
     let sep = this.separate(boids);     // Separation
     let ali = this.align(boids);            // Alignment
     let coh = this.cohesion(boids);     // Cohesion
@@ -233,7 +250,7 @@ Boid.prototype.flock = function(boids) {
     this.applyForce(ali);
     this.applyForce(coh);
     // Play sounds
-    this.playSounds(boids);
+    this.handleCollisions(boids, cid);
 }
 
 // Method to update location
@@ -243,19 +260,23 @@ Boid.prototype.update = function() {
     // Limit speed
     this.velocity.limit(this.maxspeed);
     this.position.add(this.velocity);
+    // if (this.collided) { 
+        // console.log('position: ' + this.position);
+        // console.log('velocity: ' + this.velocity);
+    // }
     // Reset accelertion to 0 each cycle
-    this.acceleration.mult(0);
+    this.acceleration.mult(0.1); // this can be a fun parameter to mess around with
 }
 
 // A method that calculates and applies a steering force towards a target
 // STEER = DESIRED MINUS VELOCITY
 Boid.prototype.seek = function(target) {
-    let desired = p5.Vector.sub(target,this.position);    // A vector pointing from the location to the target
+    let desired = p5.Vector.sub(target, this.position);    // A vector pointing from the location to the target
     // Normalize desired and scale to maximum speed
     desired.normalize();
     desired.mult(this.maxspeed);
     // Steering = Desired minus Velocity
-    let steer = p5.Vector.sub(desired,this.velocity);
+    let steer = p5.Vector.sub(desired, this.velocity);
     steer.limit(this.maxforce);    // Limit to maximum steering force
     return steer;
 }
@@ -297,7 +318,7 @@ Boid.prototype.separate = function(boids) {
     let count = 0;
     // For every boid in the system, check if it's too close
     for (let i = 0; i < boids.length; i++) {
-        let d = p5.Vector.dist(this.position,boids[i].position);
+        let d = p5.Vector.dist(this.position, boids[i].position);
         // If the distance is greater than 0 and less than an arbitrary amount (0 when you are yourself)
         if ((d > 0) && (d < desiredseparation) && (this.gid === boids[i].gid)) {
             // Calculate vector pointing away from neighbor
@@ -356,7 +377,7 @@ Boid.prototype.cohesion = function(boids) {
     let sum = createVector(0, 0);     // Start with empty vector to accumulate all locations
     let count = 0;
     for (let i = 0; i < boids.length; i++) {
-        let d = p5.Vector.dist(this.position,boids[i].position);
+        let d = p5.Vector.dist(this.position, boids[i].position);
         if ((d > 0) && (d < neighbordist) && (this.gid === boids[i].gid)) {
             sum.add(boids[i].position); // Add location
             count++;
@@ -370,16 +391,16 @@ Boid.prototype.cohesion = function(boids) {
     }
 }
 
-// Sounds
-// randomly kill one of two boids that intersect
-Boid.prototype.playSounds = function(boids) {
-    let neighbordist = 1;
-    for (let i = 0; i < boids.length; i++) {
+Boid.prototype.handleCollisions = function(boids, cid) {
+    if (this.collided === true) return;
+    let collDist = 1;
+    let spring = 2;
+    for (let i = cid; i < boids.length; i++) {
         let age = this.time / this.lifespan;
         let other_age = boids[i].time / boids[i].lifespan;
-        if (this === boids[i] || age < 0.2 || this.gid == boids[i].gid) continue;
+        if (boids[i].collided === true || i === cid || age < 0.05 || other_age < 0.05 || this.gid === boids[i].gid) continue;
         let d = p5.Vector.dist(this.position, boids[i].position);
-        if ((d > 0) && (d < neighbordist)) {
+        if ((d > 0) && (d < collDist)) {
                 let coll_pos = p5.Vector.add(this.position, boids[i].position).mult(0.5);
                 let newColl = new Collision(coll_pos.x, coll_pos.y);
                 newColl.setAge((age + other_age) / 2);
@@ -387,16 +408,36 @@ Boid.prototype.playSounds = function(boids) {
 
                 this.color = color(255, 255, 255);
                 boids[i].color = color(255, 255, 255);
+                
+                let dx = boids[i].position.x - this.position.x;
+                let dy = boids[i].position.y - this.position.y;
+                let angle = atan2(dy, dx);
+                let targetX = this.position.x + cos(angle) * collDist;
+                let targetY = this.position.y + sin(angle) * collDist;
+                let ax = (targetX - boids[i].position.x) * spring;
+                let ay = (targetY - boids[i].position.y) * spring;
+                this.velocity.x -= ax;
+                this.velocity.y -= ay;
+                this.position.x += 10 * this.velocity.x;
+                this.position.y += 10 * this.velocity.y;
+                boids[i].velocity.x += ax;
+                boids[i].velocity.y += ay;
+                boids[i].position.x += 10 * boids[i].velocity.x;
+                boids[i].position.y += 10 * boids[i].velocity.y;
             
-                let sample = samples[int(random(samples.length))]
-                sample.setVolume(0.7 * (1 - (0.5 * age + 0.5 * other_age)));
-                sample.play();
+                oscClient.send('/play', note_nums[int(random(note_nums.length))]);
+
+                this.collided = true;
+                boids[i].collided = true;
+                // let sample = samples[int(random(samples.length))]
+                // sample.setVolume(0.7 * (1 - (0.5 * age + 0.5 * other_age)));
+                // sample.play();
         }
     }
 }
 
 //// Collision object
-function Collision(x, y) {
+function Collision(x, y, sendNum) {
     this.position = createVector(x, y);
     this.r = 4.0;
 
@@ -404,11 +445,54 @@ function Collision(x, y) {
     
     this.time = 0;
     this.lifespan = 800;
+
+    this.animating = true;
+    this.animateClock = 0;
+    this.animateTime = 50;
+    this.animateStartRadius = this.r;
+    this.animateMaxRadius = this.r * 4;
+    this.animateColor = color(255, 255, 255);
+
+    this.sendNum = sendNum; // the number to send out when being "played"
+}
+
+Collision.prototype.animate = function() {
+    this.animateClock++;
+    let age = (this.animateClock / this.animateTime);
+    if (age > 1) {
+        this.endAnimation();
+        return;
+    }
+    let radius = this.animateStartRadius + age * (this.animateMaxRadius - this.animateStartRadius);
+    this.animateColor.setAlpha(255 - 255 * age);
+    stroke(this.animateColor);
+    fill(this.animateColor);
+    push();
+    translate(this.position.x, this.position.y);
+    beginShape();
+    circle(0, 0, radius);
+    endShape(CLOSE);
+    pop();
+}
+
+Collision.prototype.endAnimation = function() {
+    this.animating = false;
+    this.animateClock = 0;
 }
 
 Collision.prototype.run = function(){
     this.update();
+    if (this.animating) {
+        this.animate();
+    }
     this.time += 1;
+}
+
+Collision.prototype.replay = function() {
+    console.log('entered replay function');
+    if (this.time > 30) this.time -= 30;
+    this.animating = true;
+    oscClient.send('/play', note_nums[this.sendNum]);
 }
 
 // Method to update fading basically
@@ -417,12 +501,12 @@ Collision.prototype.update = function() {
     let alpha = 255 - 255 * (this.time / this.lifespan);
     this.color.setAlpha(alpha);
     fill(this.color);
-    strokeWeight(1);
-    stroke(255, alpha);
+    stroke(this.color);
+    // strokeWeight(1);
     push(); // start a new drawing state
     translate(this.position.x, this.position.y);
     beginShape();
-    circle(this.r, this.r, this.r);
+    circle(0, 0, this.r);
     endShape(CLOSE);
     pop();
 }
