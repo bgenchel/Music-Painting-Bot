@@ -1,7 +1,7 @@
 # Musical Painting Bot
 Code etc. for a 3D printed robot that paints with music.
 
-##### 2019 Team: Benjie Genchel, Richard Yang, Ryan Rose
+##### 2019 Team: Benjie Genchel, Richard Yang, Ryan Rose, Yi We
 ##### 2018 Team: Benjie Genchel, Richard Yang, Somesh Ganesh 
 
 ## Motor Control Installation
