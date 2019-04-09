@@ -1,8 +1,9 @@
 class OSCClient {
-    constructor() {
+    constructor(ws_url) {
         // Create the web socket port
         this.oscPort = new osc.WebSocketPort({
-            url: "ws://localhost:8081",
+            // url: "ws://localhost:8081",
+            url: ws_url
         });
 
         // Open the port

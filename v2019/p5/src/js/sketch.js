@@ -7,26 +7,21 @@ let samples;
 let maxBoids = 250;
 let maxCollisions = 25;
 
-let oscClient = new OSCClient();
-
-let sample_fnames = ['../res/sounds/tennyson_bell.mp3', 
-                     '../res/sounds/tennyson_bell2.mp3', 
-                     '../res/sounds/tennyson_bell3.mp3', 
-                     '../res/sounds/tennyson_bell5.mp3', 
-                     '../res/sounds/tennyson_bell6.mp3', 
-                     '../res/sounds/tennyson_bell7.mp3'];
+let midiOSCClient = new OSCClient("ws://localhost:8081")
+let botOSCClient = new OSCClient("ws://localhost:8082")
 
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
+let bot_addresses = ['/elbow', '/wrist', '/finger'];
 
-function preload() {
-    samples = [];
-    soundFormats('mp3', 'ogg');
-    for(var idx in sample_fnames) {
-        let sample = loadSound(sample_fnames[idx]);
-        sample.playMode('sustain');
-        samples.push(sample);
-    }
-}
+// function preload() {
+//     samples = [];
+//     soundFormats('mp3', 'ogg');
+//     for(var idx in sample_fnames) {
+//         let sample = loadSound(sample_fnames[idx]);
+//         sample.playMode('sustain');
+//         samples.push(sample);
+//     }
+// }
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
@@ -44,7 +39,7 @@ function setup() {
     // Create the arm
     virtualArm = new VirtualArm();
 
-    oscClient.send('/test', [1, 2, 3]);
+    botOSCClient.send('/test', [1, 2, 3]);
 }
 
 function draw() {
@@ -85,6 +80,9 @@ function VirtualArm() {
 
     this.x[this.x.length - 1] = window.innerWidth / 2; // Set base x-coordinate
     this.y[this.x.length - 1] = window.innerHeight; // Set base y-coordinate
+
+    this.sendTimer = 0;
+    this.sendFreq = 60;
 }
 
 VirtualArm.prototype.run = function() {
@@ -108,7 +106,17 @@ VirtualArm.prototype.run = function() {
     for (let k = 0; k < this.x.length; k++) {
         this.segment(this.x[k], this.y[k], this.angle[k], (k + 1) * 2);
     }
+
+    this.sendTimer++;
+    if (this.sendTimer >= this.sendFreq) {
+        this.sendTimer = 0;
+        for (let s = 0; s < this.numSegments; s++) {
+            console.log('segment: ' + s + 'angle: ' + this.angle[s]);
+            botOSCClient.send(bot_addresses[s], [s, -this.angle[s] * (180 / 3.14159), 0.5]);
+        }
+    }
 }
+
 
 VirtualArm.prototype.positionSegment = function(a, b) {
     this.x[b] = this.x[a] + cos(this.angle[a]) * this.segLength;
@@ -505,14 +513,14 @@ Collision.prototype.run = function(){
 
 Collision.prototype.play = function() {
     this.animating = true;
-    oscClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    midiOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
 }
 
 Collision.prototype.replay = function() {
     console.log('entered replay function');
     // if (this.time > 30) this.time -= 30;
     this.animating = true;
-    oscClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    midiOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
     // os.log(this.getAge());
 }
 
