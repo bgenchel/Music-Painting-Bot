@@ -4,20 +4,32 @@ const osc = require('osc');
 const ws = require('ws');
 
 // Establishes a UDP address/port to receive from (local) and an address/port to send to (remote)
-let udp = new osc.UDPPort({
+let udp_midi = new osc.UDPPort({
     localAddress: "127.0.0.1", // 127.0.0.1, a.k.a. localhost, is a way to refer to this computer
     localPort: 6000,
     remoteAddress: "127.0.0.1",
     remotePort: 6001
 });
 
+let udp_bot = new osc.UDPPort({
+    localAddress: "127.0.0.1",
+    localPort: 6002,
+    remoteAddress: "127.0.0.1",
+    remotePort: 6003
+});
+
 // This function is called when the UDP port is opened and ready to use
-udp.on("ready", () => {
-    console.log("OSC Listening on port " + udp.options.localPort + ", sending to port " + udp.options.remotePort);
+udp_midi.on("ready", () => {
+    console.log("OSC Listening on port " + udp_midi.options.localPort + ", sending to port " + udp_midi.options.remotePort);
+});
+
+udp_bot.on("ready", () => {
+    console.log("OSC Listening on port " + udp_bot.options.localPort + ", sending to port " + udp_bot.options.remotePort);
 });
 
 // Open the UDP port
-udp.open();
+udp_midi.open();
+udp_bot.open();
 
 // Create a server to receive web socket connections from a browser
 let wss = new ws.Server({
@@ -32,7 +44,11 @@ wss.on("connection", function (socket) {
     });
 
     // This relays messages sent from the browser via web socket to the UDP port, out to the remote UDP port.
-    var relay = new osc.Relay(udp, socketPort, {
+    var relay_midi = new osc.Relay(udp_midi, socketPort, {
+        raw: true
+    });
+
+    var relay_bot = new osc.Relay(udp_bot, socketPort, {
         raw: true
     });
 });

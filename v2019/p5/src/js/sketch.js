@@ -16,7 +16,7 @@ let sample_fnames = ['../res/sounds/tennyson_bell.mp3',
                      '../res/sounds/tennyson_bell6.mp3', 
                      '../res/sounds/tennyson_bell7.mp3'];
 
-let note_nums = [0, 2, 4, 7, 9, 11];
+let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
 
 function preload() {
     samples = [];
@@ -43,6 +43,8 @@ function setup() {
     newColor();
     // Create the arm
     virtualArm = new VirtualArm();
+
+    oscClient.send('/test', [1, 2, 3]);
 }
 
 function draw() {
@@ -145,7 +147,13 @@ function Flock() {
 
     this.sequenceIndex = 0;
     this.sequenceTimer = 0;
-    this.sequenceTempo = 100;
+    this.sequenceTempo = 30;
+}
+
+function collCompare(a, b) {
+    if (a.position.x < b.position.x) return -1;
+    if (a.position.x > b.position.x) return 1;
+    return 0;
 }
 
 Flock.prototype.run = function() {
@@ -160,6 +168,10 @@ Flock.prototype.run = function() {
             boidKillList.push(i);
         }
     }
+
+    for (let idx in boidKillList) {
+        this.boids.splice(boidKillList[idx], 1);
+    }
     
     for (let i = 0; i < this.collisions.length; i++) {
         let curr = this.collisions[i];
@@ -169,19 +181,21 @@ Flock.prototype.run = function() {
         }
     }
     
-    for (let idx in boidKillList) {
-        this.boids.splice(boidKillList[idx], 1);
-    }
-    
     for (let idx in collisionKillList) {
         this.collisions.splice(collisionKillList[idx], 1);
     }
 
-    this.sequenceTimer += 1;
-    if (this.sequenceIndex >= this.collisions.length) this.sequenceIndex = 0;
+    this.sequenceTimer++;
+    this.collisions.sort(collCompare);
+    if (this.collisions.length > 0) {
+        if (this.sequenceIndex >= this.collisions.length) this.sequenceIndex = 0;
+        if (this.sequenceTimer === this.sequenceTempo) {
+            this.collisions[this.sequenceIndex].replay();
+            this.sequenceIndex++;
+        }
+    }
     if (this.sequenceTimer === this.sequenceTempo) {
-        this.collisions[this.sequenceIndex].replay();
-        this.sequenceIndex++;
+        this.sequenceTimer = 0;
     }
 }
 
@@ -402,7 +416,7 @@ Boid.prototype.handleCollisions = function(boids, cid) {
         let d = p5.Vector.dist(this.position, boids[i].position);
         if ((d > 0) && (d < collDist)) {
                 let coll_pos = p5.Vector.add(this.position, boids[i].position).mult(0.5);
-                let newColl = new Collision(coll_pos.x, coll_pos.y);
+                let newColl = new Collision(coll_pos.x, coll_pos.y, int(random(note_nums.length)));
                 newColl.setAge((age + other_age) / 2);
                 flock.addCollision(newColl);
 
@@ -425,7 +439,7 @@ Boid.prototype.handleCollisions = function(boids, cid) {
                 boids[i].position.x += 10 * boids[i].velocity.x;
                 boids[i].position.y += 10 * boids[i].velocity.y;
             
-                oscClient.send('/play', note_nums[int(random(note_nums.length))]);
+                newColl.play();
 
                 this.collided = true;
                 boids[i].collided = true;
@@ -444,9 +458,9 @@ function Collision(x, y, sendNum) {
     this.color = color(255, 255, 255);
     
     this.time = 0;
-    this.lifespan = 800;
+    this.lifespan = 1500;
 
-    this.animating = true;
+    this.animating = false;
     this.animateClock = 0;
     this.animateTime = 50;
     this.animateStartRadius = this.r;
@@ -466,6 +480,7 @@ Collision.prototype.animate = function() {
     let radius = this.animateStartRadius + age * (this.animateMaxRadius - this.animateStartRadius);
     this.animateColor.setAlpha(255 - 255 * age);
     stroke(this.animateColor);
+    strokeWeight(1);
     fill(this.animateColor);
     push();
     translate(this.position.x, this.position.y);
@@ -488,11 +503,17 @@ Collision.prototype.run = function(){
     this.time += 1;
 }
 
+Collision.prototype.play = function() {
+    this.animating = true;
+    oscClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+}
+
 Collision.prototype.replay = function() {
     console.log('entered replay function');
-    if (this.time > 30) this.time -= 30;
+    // if (this.time > 30) this.time -= 30;
     this.animating = true;
-    oscClient.send('/play', note_nums[this.sendNum]);
+    oscClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    // os.log(this.getAge());
 }
 
 // Method to update fading basically
@@ -502,7 +523,7 @@ Collision.prototype.update = function() {
     this.color.setAlpha(alpha);
     fill(this.color);
     stroke(this.color);
-    // strokeWeight(1);
+    strokeWeight(1);
     push(); // start a new drawing state
     translate(this.position.x, this.position.y);
     beginShape();
@@ -514,4 +535,8 @@ Collision.prototype.update = function() {
 Collision.prototype.setAge = function(pct) {
     // input is percentage of life over
     this.time = int(this.lifespan * pct);
+}
+
+Collision.prototype.getAge = function() {
+    return this.time / this.lifespan;
 }

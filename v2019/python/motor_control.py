@@ -20,9 +20,7 @@ class SerialClient:
             ["error", "s"]
         ]
 
-        self._callbacks = {
-            "error": print
-        }
+        self._callbacks = {"error": print}
 
         self._arduino = None
 
@@ -35,7 +33,7 @@ class SerialClient:
 
     def send(self, address, args):
         """Sends arguments to a specified address at an Arduino.
-        Args:
+        args:
             address: The address of the message to send.
             args: One, or a list of arguments to send.
         """
@@ -54,7 +52,6 @@ class ArduinoClient:
     """Handles the direct reading and sending to an Arduino via the CmdMessender protocol.
     Reading of the serial connection happens as fast as possible on its own thread.
     """
-
     def __init__(self, device_path, commands, callbacks, baud_rate=9600):
         """Initializes an ArduinoClient."""
         self._device_path = device_path
