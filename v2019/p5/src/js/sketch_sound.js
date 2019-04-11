@@ -13,7 +13,7 @@ let botOSCClient = new OSCClient("ws://localhost:8082")
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
 let bot_addresses = ['/elbow', '/wrist', '/finger'];
 
-var fft;
+var fft, lowPass;
 var mic, soundFile;
 var amplitude;
 var mapMax = 1.0;
@@ -57,6 +57,14 @@ function setup() {
     amplitude = new p5.Amplitude();
     amplitude.setInput(mic);
     amplitude.smooth(0.6);
+    
+    // fft
+    lowPass = new p5.LowPass();
+    lowPass.disconnect();
+    mic.connect(lowPass);
+
+    fft = new p5.FFT();
+    fft.setInput(lowPass);
 
     botOSCClient.send('/test', [1, 2, 3]);
 }
