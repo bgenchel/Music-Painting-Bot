@@ -23,6 +23,11 @@ var prevLevels = new Array(60);
 var level_buff = new Array(30);
 var freq_buff = new Array(30);
 
+var preNormalize = true;
+var postNormalize = true;
+var doCenterClip = false;
+var centerClipThreshold = 0.0;
+
 // function preload() {
 //     samples = [];
 //     soundFormats('mp3', 'ogg');
@@ -67,6 +72,8 @@ function setup() {
     fft.setInput(lowPass);
 
     botOSCClient.send('/test', [1, 2, 3]);
+
+    frameRate(60);
 }
 
 function draw() {
@@ -92,7 +99,7 @@ function draw() {
     var arm_freq = freq_buff.sum() / freq_buff.length;
     text('arm_Freq: ' + arm_freq, 20, 80);
 
-    virtualArm.run();
+    virtualArm.run(arm_level * 1000, arm_freq);
 }
 
 
@@ -206,6 +213,10 @@ function findFrequency(autocorr) {
   return fundamentalFrequency;
 }
 
+Array.prototype.sum = function(){
+    return this.reduce(function(a,b){return a+b;});
+}
+
 function mouseClicked() {
     // sample.play();
     newColor();
@@ -243,8 +254,8 @@ function VirtualArm() {
     this.sendFreq = 60;
 }
 
-VirtualArm.prototype.run = function() {
-    this.reachSegment(0, mouseX, mouseY);
+VirtualArm.prototype.run = function(level, freq) {
+    this.reachSegment(0, freq, level);
     for (let i = 1; i < this.numSegments; i++) {
         this.reachSegment(i, this.targetX, this.targetY);
     }
@@ -254,7 +265,7 @@ VirtualArm.prototype.run = function() {
     for (let k = 0; k < this.x.length; k++) {
         this.segment(this.x[k], this.y[k], this.angle[k], (k + 1) * 2);
     }
-    this.reachSegment(0, mouseX, mouseY);
+    this.reachSegment(0, freq, level);
     for (let i = 1; i < this.numSegments; i++) {
         this.reachSegment(i, this.targetX, this.targetY);
     }
@@ -336,6 +347,7 @@ Flock.prototype.run = function() {
     }
 
     for (let idx in boidKillList) {
+        // console.log('actually calling boid kill');
         this.boids.splice(boidKillList[idx], 1);
     }
     
@@ -385,7 +397,6 @@ Flock.prototype.addCollision = function(c) {
 
 // Boid class
 // Methods for Separation, Cohesion, Alignment added
-
 function Boid(x, y, color, gID) {
     this.acceleration = createVector(0, 0);
     this.velocity = createVector(random(-1, 1), random(-1, 1));

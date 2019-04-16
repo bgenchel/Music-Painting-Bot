@@ -415,7 +415,7 @@ Boid.prototype.cohesion = function(boids) {
 
 Boid.prototype.handleCollisions = function(boids, cid) {
     if (this.collided === true) return;
-    let collDist = 1;
+    let collDist = 3;
     let spring = 2;
     for (let i = cid; i < boids.length; i++) {
         let age = this.time / this.lifespan;
