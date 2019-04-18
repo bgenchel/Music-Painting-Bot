@@ -1,27 +1,22 @@
 let flock;
 let boidColor;
 let idCounter;
-let virtualArm;
 let samples;
+let cursorX = 0, cursorY = 0;
 
 let maxBoids = 250;
 let maxCollisions = 25;
 
-let midiOSCClient = new OSCClient("ws://localhost:8081")
-let botOSCClient = new OSCClient("ws://localhost:8082")
-
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
-let bot_addresses = ['/elbow', '/wrist', '/finger'];
 
-// function preload() {
-//     samples = [];
-//     soundFormats('mp3', 'ogg');
-//     for(var idx in sample_fnames) {
-//         let sample = loadSound(sample_fnames[idx]);
-//         sample.playMode('sustain');
-//         samples.push(sample);
-//     }
-// }
+let midiOSCClient = new OSCClient("ws://localhost:8081")
+midiOSCClient.map('/coor', coordinateHandler);
+
+function coordinateHandler(address, args){
+    cursorX = args[0];
+    cursorY = args[1];
+    console.log('received cursor message');
+}
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
@@ -35,17 +30,11 @@ function setup() {
         let b = new Boid(width / 2 + random(100), height / 2 + random(100), boidColor, idCounter);
         flock.addBoid(b);
     }
-    newColor();
-    // Create the arm
-    virtualArm = new VirtualArm();
-
-    botOSCClient.send('/test', [1, 2, 3]);
 }
 
 function draw() {
     background(51);
     flock.run();
-    virtualArm.run();
 }
 
 function mouseClicked() {
@@ -56,90 +45,12 @@ function mouseClicked() {
 
 // Add a new boid into the System
 function mouseDragged() {
-    flock.addBoid(new Boid(mouseX, mouseY, boidColor, idCounter));
+    // flock.addBoid(new Boid(mouseX, mouseY, boidColor, idCounter));
+    flock.addBoid(new Boid(cursorX, cursorY, boidColor, idCounter));
 }
 
 function newColor() {
     boidColor = color(random(255),random(255),random(255));
-}
-
-function VirtualArm() {
-    this.numSegments = 3
-    this.x = [],
-    this.y = [],
-    this.angle = [],
-    this.segLength = window.innerHeight / 3 - 10,
-    this.targetX,
-    this.targetY;
-
-    for (let i = 0; i < this.numSegments; i++) {
-        this.x[i] = 0;
-        this.y[i] = 0;
-        this.angle[i] = 0;
-    }
-
-    this.x[this.x.length - 1] = window.innerWidth / 2; // Set base x-coordinate
-    this.y[this.x.length - 1] = window.innerHeight; // Set base y-coordinate
-
-    this.sendTimer = 0;
-    this.sendFreq = 60;
-}
-
-VirtualArm.prototype.run = function() {
-    this.reachSegment(0, mouseX, mouseY);
-    for (let i = 1; i < this.numSegments; i++) {
-        this.reachSegment(i, this.targetX, this.targetY);
-    }
-    for (let j = this.x.length - 1; j >= 1; j--) {
-        this.positionSegment(j, j - 1);
-    }
-    for (let k = 0; k < this.x.length; k++) {
-        this.segment(this.x[k], this.y[k], this.angle[k], (k + 1) * 2);
-    }
-    this.reachSegment(0, mouseX, mouseY);
-    for (let i = 1; i < this.numSegments; i++) {
-        this.reachSegment(i, this.targetX, this.targetY);
-    }
-    for (let j = this.x.length - 1; j >= 1; j--) {
-        this.positionSegment(j, j - 1);
-    }
-    for (let k = 0; k < this.x.length; k++) {
-        this.segment(this.x[k], this.y[k], this.angle[k], (k + 1) * 2);
-    }
-
-    this.sendTimer++;
-    if (this.sendTimer >= this.sendFreq) {
-        this.sendTimer = 0;
-        for (let s = 0; s < this.numSegments; s++) {
-            console.log('segment: ' + s + 'angle: ' + this.angle[s]);
-            botOSCClient.send(bot_addresses[s], [s, -this.angle[s] * (180 / 3.14159), 0.5]);
-        }
-    }
-}
-
-
-VirtualArm.prototype.positionSegment = function(a, b) {
-    this.x[b] = this.x[a] + cos(this.angle[a]) * this.segLength;
-    this.y[b] = this.y[a] + sin(this.angle[a]) * this.segLength;
-}
-
-VirtualArm.prototype.reachSegment = function(i, xin, yin) {
-    const dx = xin - this.x[i];
-    const dy = yin - this.y[i];
-    this.angle[i] = atan2(dy, dx);
-    this.targetX = xin - cos(this.angle[i]) * this.segLength;
-    this.targetY = yin - sin(this.angle[i]) * this.segLength;
-}
-
-VirtualArm.prototype.segment = function(x, y, a, sw) {
-    strokeWeight(sw);
-    stroke(255, 100);
-    noFill();
-    push();
-    translate(x, y);
-    rotate(a);
-    line(0, 0, this.segLength, 0);
-    pop();
 }
 
 // The Nature of Code
