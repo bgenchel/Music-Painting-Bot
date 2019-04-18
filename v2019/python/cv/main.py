@@ -17,13 +17,10 @@ SAMPLE_EVERY = 10 # Frame Reads
 #                     'blue': {'lower': (80, 37, 6), 'upper': (117, 60, 40)},
 #                     'orange': {'lower': (3, 0, 70), 'upper': (20, 30, 135)}}
 
-COLOR_THRESHOLD = {'lower': (100, 200, 200), 'upper': (255, 255, 255)}
-
+COLOR_THRESHOLD = {'lower': (150, 200, 200), 'upper': (255, 255, 255)}
 DISPLAY_COLORS = {'white': (255, 255, 255)}
 
-circle_ds = {"red": {"center": [0, 0], "area": 0}, "green": {"center": [0, 0], "area": 0}, "blue": {"center": [0, 0], "area": 0},
-        'orange': {"center": [0, 0], "area": 0}, "white": {"center": [0, 0], "area": 0}}
-
+circle_ds = {"white": {"center": [0, 0], "area": 0}}
 
 def conform(value, threshold, min):
     if (value - min) <= threshold:
