@@ -25,7 +25,8 @@ class SerialClient:
         self._arduino = None
 
         if device_path is None:
-            arduino_paths = glob("/dev/cu.usbmodem*")
+            # arduino_paths = glob("/dev/cu.usbmodem*")
+            arduino_paths = glob("/dev/cu.wchusbserial*")
             device_path = arduino_paths[0]
             print("No device path specified, defaulting to %s" % device_path)
 

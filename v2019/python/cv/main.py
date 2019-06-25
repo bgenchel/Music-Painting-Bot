@@ -11,11 +11,12 @@ from pythonosc import udp_client
 
 client = udp_client.SimpleUDPClient('127.0.0.1', 6000)
 
-SAMPLE_EVERY = 60 # Frame Reads
-COLOR_THRESHOLD = {'lower': (0, 200, 200), 'upper': (150, 255, 255)}
-DISPLAY_COLORS = {'white': (255, 255, 255)}
+SAMPLE_EVERY = 1  # 60 # Frame Reads
+COLOR_THRESHOLD = {'lower': (105, 159, 60), 'upper': (255, 255, 160)}
+DISPLAY_COLORS = {'green': (255, 255, 255)}
 
-CIRCLE_DS = {"white": {"center": [0, 0], "area": 0}}
+CIRCLE_DS = {"green": {"center": [0, 0], "area": 0}}
+
 
 def conform(value, threshold, min):
     if (value - min) <= threshold:
@@ -39,12 +40,13 @@ def process_data(cblobs_list):
 def main(camera_num):
     camera = cv2.VideoCapture(camera_num)
     frame_count = 0
+    clicked = False
     while True:
         grabbed, frame = camera.read()
 
         frame = imutils.resize(frame, width=500)
         lab = lab_contrast_increase(frame)
-        cv2.imshow('lab', lab)
+        # cv2.imshow('lab', lab)
 
         color_blobs = []
         # for color, thresholds in COLOR_THRESHOLDS.items():
@@ -66,18 +68,26 @@ def main(camera_num):
                 if radius > 10:
                     # draw the circle and centroid on the frame,
                     # then update the list of tracked points
-                    CIRCLE_DS["white"] = {"center": [int(x), int(y)], "area": 3.14 * (radius**2)}
-                    cv2.circle(frame, (int(x), int(y)), int(radius), DISPLAY_COLORS["white"], 2)
+                    CIRCLE_DS["green"] = {"center": [int(x), int(y)], "area": 3.14 * (radius**2)}
+                    cv2.circle(frame, (int(x), int(y)), int(radius), DISPLAY_COLORS["green"], 2)
                     # cv2.circle(frame, center, int(radius)/4, colors[key], 1)
-                    cv2.putText(frame, "white", (int(x - radius), int(y - radius)), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, DISPLAY_COLORS["white"], 2)
+                    cv2.putText(frame, "green", (int(x - radius), int(y - radius)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, DISPLAY_COLORS["green"], 2)
 
-                    color_blobs.append({'color': "white", "center": center, "area": M["m00"], "radius": radius})
+                    color_blobs.append({'color': "green", "center": center, "area": M["m00"], "radius": radius})
 
         color_blobs = sorted(color_blobs, key=lambda blob: blob['center'][1], reverse=True)
         frame_count += 1
         if frame_count == SAMPLE_EVERY:
-            print(color_blobs)
+            frame_count = 0
+            if not clicked and len(color_blobs):
+                # print('clicked')
+                clicked = True
+                client.send_message('/click', ['clicked'])
+            elif clicked and not len(color_blobs):
+                # print('released')
+                clicked=False
+                client.send_message('/click', ['released'])
 
         cursorX = sum([blob['center'][0] for blob in color_blobs]) / (len(color_blobs) + .0001)
         cursorY = sum([blob['center'][1] for blob in color_blobs]) / (len(color_blobs) + .0001)
@@ -90,7 +100,7 @@ def main(camera_num):
         #         print(i[0], i[1])
         #         client.send_message('/{}/{}'.format(i[0], "center"), str(i[1]['center']))
         # show the frame to our screen
-        cv2.imshow("Frame", frame)
+        # cv2.imshow("Frame", frame)
 
         key = cv2.waitKey(1) & 0xFF
         # if the 'q' key is pressed, stop the loop

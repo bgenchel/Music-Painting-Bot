@@ -1,27 +1,38 @@
 let flock;
-let boidColor;
+let boidColor, canvasColor;
 let idCounter;
 let samples;
+
 let cursorX = 0, cursorY = 0;
+let mouseDragging = false;
 
 let maxBoids = 250;
 let maxCollisions = 25;
 
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
 
-let midiOSCClient = new OSCClient("ws://localhost:8081")
-midiOSCClient.map('/coor', coordinateHandler);
+let vizOSCClient = new OSCClient("ws://localhost:8081")
+vizOSCClient.map('/coor', coordinateHandler);
+vizOSCClient.map('/click', clickHandler);
+
+function clickHandler(address, args) {
+    // console.log(args[0]);
+    mouseDragging = args[0] === "clicked";
+    if (mouseDragging) {
+        newColor();
+        idCounter += 1;
+    }
+}
 
 function coordinateHandler(address, args){
     cursorX = args[0];
     cursorY = args[1];
-    console.log('received cursor message');
 }
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
     // createP("Drag the mouse to generate new boids.");
-    console.log('setting up');
+    // console.log('setting up');
     idCounter = 0;
     flock = new Flock();
     // Add an initial set of boids into the system
@@ -33,8 +44,12 @@ function setup() {
 }
 
 function draw() {
-    background(51);
+    background(canvasColor);
     flock.run();
+    if (mouseDragging) {
+        // console.log('adding boid');
+        flock.addBoid(new Boid(cursorX, cursorY, boidColor, idCounter));
+    }
 }
 
 function mouseClicked() {
@@ -50,7 +65,12 @@ function mouseDragged() {
 }
 
 function newColor() {
-    boidColor = color(random(255),random(255),random(255));
+
+    let r = random(255), g = random(255), b = random(255);
+    darken = max([r, g, b]) - 25;
+    boidColor = color(r, g, b);
+    canvasColor = color(max(0, r - darken), max(0, g - darken), max(0, b - darken));
+    // boidColor = color(random(255),random(255),random(255));
 }
 
 // The Nature of Code
@@ -326,7 +346,7 @@ Boid.prototype.cohesion = function(boids) {
 
 Boid.prototype.handleCollisions = function(boids, cid) {
     if (this.collided === true) return;
-    let collDist = 3;
+    let collDist = 0.5;
     let spring = 2;
     for (let i = cid; i < boids.length; i++) {
         let age = this.time / this.lifespan;
@@ -424,14 +444,14 @@ Collision.prototype.run = function(){
 
 Collision.prototype.play = function() {
     this.animating = true;
-    midiOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    vizOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
 }
 
 Collision.prototype.replay = function() {
-    console.log('entered replay function');
+    // console.log('entered replay function');
     // if (this.time > 30) this.time -= 30;
     this.animating = true;
-    midiOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    vizOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
     // os.log(this.getAge());
 }
 

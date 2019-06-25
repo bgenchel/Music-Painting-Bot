@@ -44,6 +44,7 @@ class OSCClient {
      * @param message : the OSC message received over web socket
      */
     onMessage(message) {
+        console.log('received: ' + message.address)
         let cb = this.mappings[message.address];
         if(cb != undefined) cb(message.address, message.args);
     }
