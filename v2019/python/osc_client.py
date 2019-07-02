@@ -27,7 +27,6 @@ def wrist_handler(address, *args):
     # serial_client.send('moveMotor', [0, 0, 0])
 
 def finger_handler(address, *args):
-    print(args)
     print('_finger_handler')
     # args.append(0.5);
     serial_client.send('moveMotor', list(args))
@@ -40,6 +39,7 @@ def test_handler(address, *args):
     :param args: the arguments of the OSC message, N.B. MIGHT be a list (if > 1 arg) or MIGHT be a value (only 1 arg)
     :return:
     """
+    print('_test_handler')
     print(address, args)
 
 class OSCClient:

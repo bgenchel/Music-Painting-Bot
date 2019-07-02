@@ -12,7 +12,8 @@ class SerialClient:
     """
 
     def __init__(self, device_path=None):
-        """Initializes a SerialClient.
+        """
+        Initializes a SerialClient.
         """
         self.device_path = device_path
         self._commands = [  # The order of this array **MUST** be the same as the enum in the Arduino code.

@@ -12,10 +12,6 @@ let visComm = new OSCCommunicator({
     udpSendPort: 6001
 });
 
-function coordinateHandler(adress, args) {
-
-visComm.map('/coordinate',  
-
 // Communication Channel for the Robot
 let botComm = new OSCCommunicator({
     webSocketPort: 8082,

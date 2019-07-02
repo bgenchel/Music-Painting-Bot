@@ -2,9 +2,9 @@
 #include <Servo.h>
 
 // Motor pin definitions
-int elbowPin = 2;
+int fingerPin = 2;
 int wristPin = 3;
-int fingerPin = 4;
+int elbowPin = 4;
 int baseRotatePin = 5;
 int baseLinearPin = 6;
 
@@ -64,7 +64,13 @@ CmdMessenger cm = CmdMessenger(Serial, ',', ';', '/');
 void move(int motorId, float pos, float dur) {
   // pos [degrees]
   // dur [seconds]
+//  Serial.print("moving motor ");
+//  Serial.print(motorId);
+//  Serial.print("to position ");
+//  Serial.println(pos);
   float currentPosition = motors[motorId].read();
+//  Serial.print("motors[motorId] current position: ");
+//  Serial.println(currentPosition);
   currentPositions[motorId] = currentPosition;
   float durMs = dur * 1000.0;
   float numUpdates = durMs / (float) updateFreq;
@@ -73,7 +79,6 @@ void move(int motorId, float pos, float dur) {
   speeds[motorId] = newSpeed;
 }
 
-
 /*
    CmdMessenger command callbacks
 */
@@ -81,11 +86,22 @@ void onUnknownCommand(void) {
   cm.sendCmd(error, "Command without callback.");
 }
 
+void printOnMoveMotor(int motorId, float pos, float dur) {
+//   Serial.println("onMoveMotor invoked.");
+//   Serial.print("received motorId: ");
+//   Serial.println(motorId);
+//   Serial.print("received position: ");
+//   Serial.println(pos);
+//   Serial.print("received duration (ms): ");
+//   Serial.println(dur);
+}
+
 void onMoveMotor(void) {
   int motorId = cm.readBinArg<int>();
   float pos = cm.readBinArg<float>();
   float dur = cm.readBinArg<float>();
-
+  
+  printOnMoveMotor(motorId, pos, dur);
   move(motorId, pos, dur);
 }
 
@@ -108,11 +124,11 @@ void setup() {
   baseLinearMotor.attach(baseLinearPin);
 
   // Set to default positions
-  move(elbow, 0.0, 1.0);
-  move(wrist, 0.0, 1.0);
-  move(finger, 0.0, 1.0);
-  move(baseRotate, 0.0, 1.0);
-  move(baseLinear, 0.0, 1.0);
+  move(elbow, elbowDefault, 1.0);
+  move(wrist, wristDefault, 1.0);
+  move(finger, fingerDefault, 1.0);
+  move(baseRotate, baseRotateDefault, 1.0);
+  move(baseLinear, baseLinearDefault, 1.0);
 }
 
 void loop() {
@@ -122,8 +138,10 @@ void loop() {
   if (loopStart - lastUpdate >= updateFreq) {
     for (int i = 0; i < 5; i++) {
       float newPos;
-      if (goalPositions[i] > currentPositions[i]) newPos = currentPositions[i] + speeds[i];
-      else newPos = currentPositions[i] - speeds[i];
+      if (goalPositions[i] > currentPositions[i]) 
+        newPos = currentPositions[i] + speeds[i];
+      else 
+        newPos = currentPositions[i] - speeds[i];
       motors[i].write(newPos);
       currentPositions[i] = newPos;
     }
@@ -133,5 +151,3 @@ void loop() {
   // Look for Serial messages through CmdMessenger
   cm.feedinSerialData();
 }
-
-

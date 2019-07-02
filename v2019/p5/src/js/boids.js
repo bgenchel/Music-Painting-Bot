@@ -13,16 +13,6 @@ let botOSCClient = new OSCClient("ws://localhost:8082")
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
 let bot_addresses = ['/elbow', '/wrist', '/finger'];
 
-// function preload() {
-//     samples = [];
-//     soundFormats('mp3', 'ogg');
-//     for(var idx in sample_fnames) {
-//         let sample = loadSound(sample_fnames[idx]);
-//         sample.playMode('sustain');
-//         samples.push(sample);
-//     }
-// }
-
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
     // createP("Drag the mouse to generate new boids.");
