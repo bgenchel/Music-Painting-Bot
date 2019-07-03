@@ -12,13 +12,20 @@ let hitHeight;
 
 let looping = true;
 
-let maxOSCClient = new OSCClient("ws://localhost:8081")
+let cursorX = cursorY = 0;
+
+let oscClient = new OSCClient("ws://localhost:8081")
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
     current = createVector(0,0);
     previous = createVector(0,0);
     hitHeight = 0.1 * height;
+
+    oscClient.map('/cursor', (args) => {
+        cursorX = args[0];
+        cursorY = args[1];
+    });
 }
 
 function draw() {
@@ -140,7 +147,7 @@ Particle.prototype.update = function() {
 
     if (this.position.y - (this.age * 2) < hitHeight && !this.hasHit) {
         let alpha = max(0, (1 - 1.2 * this.age / this.lifespan));
-        maxOSCClient.send('/cloud', [this.position.x, this.position.y, this.size, alpha]);
+        oscClient.send('/cloud', [this.position.x, this.position.y, this.size, alpha]);
         this.hasHit = true;
     }
 }

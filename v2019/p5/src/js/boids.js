@@ -10,7 +10,6 @@ let maxCollisions = 25;
 let maxOSCClient = new OSCClient("ws://localhost:8081")
 let botOSCClient = new OSCClient("ws://localhost:8082")
 
-let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
 // let bot_addresses = ['/elbow', '/wrist', '/finger'];
 
 let looping = true;

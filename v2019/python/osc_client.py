@@ -14,6 +14,12 @@ FINGER = 0
 
 serial_client = SerialClient()
 
+def base_handler(address, *args):
+    print('_base_handler')
+    # args = args*
+    serial_client.send('moveMotor', list(args))
+    # serial_client.send('moveMotor', [0, 0, 0])
+
 def elbow_handler(address, *args):
     print('_elbow_handler')
     # args = args*
@@ -51,6 +57,7 @@ class OSCClient:
         # TODO create functions to listen from the webpage, and map them here
         #   handler functions need to take 2 arguments, first the address, then the arguments
         self.dispatcher.map("/test", test_handler)
+        self.dispatcher.map("/base", base_handler)
         self.dispatcher.map("/elbow", elbow_handler)
         self.dispatcher.map("/wrist", wrist_handler)
         self.dispatcher.map("/finger", finger_handler)

@@ -8,8 +8,6 @@ import json
 from pythonosc import osc_message_builder
 from pythonosc import udp_client
 
-camera = cv2.VideoCapture(1)
-client = udp_client.SimpleUDPClient('127.0.0.1', 5005)
 SAMPLE_EVERY = 10 # Frame Reads
 
 # COLOR_THRESHOLDS = {'red': {'lower': (10, 0, 62), 'upper': (50, 43, 102)},
@@ -18,9 +16,8 @@ SAMPLE_EVERY = 10 # Frame Reads
 #                     'orange': {'lower': (3, 0, 70), 'upper': (20, 30, 135)}}
 
 COLOR_THRESHOLD = {'lower': (150, 200, 200), 'upper': (255, 255, 255)}
-DISPLAY_COLORS = {'white': (255, 255, 255)}
-
-circle_ds = {"white": {"center": [0, 0], "area": 0}}
+DISPLAY_COLORS = {'target': (255, 255, 255)}
+circle_ds = {"target": {"center": [0, 0], "area": 0}}
 
 def conform(value, threshold, min):
     if (value - min) <= threshold:
@@ -41,7 +38,9 @@ def lab_contrast_increase(frame):
 def process_data(cblobs_list):
     print([cb['color'] for cb in cblobs_list])
 
-def main():
+def main(camera_num):
+    camera = cv2.VideoCapture(camera_num)
+    client = udp_client.SimpleUDPClient('127.0.0.1', 5005)
     frame_count = 0
     while True:
         grabbed, frame = camera.read()
@@ -61,27 +60,29 @@ def main():
         cv2.drawContours(lab, cnts, -1, (0, 255, 0), 3)
         cv2.imshow('mask', lab)
         if len(cnts) > 0:
-#            c = max(cnts, key=cv2.contourArea)
-            for c in cnts:
-                ((x, y), radius) = cv2.minEnclosingCircle(c)
-                # print(radius)
-                M = cv2.moments(c)
-                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-                if radius > 10:
-                    # draw the circle and centroid on the frame,
-                    # then update the list of tracked points
-                    circle_ds["white"] = {"center": [int(x), int(y)], "area": 3.14 * (radius**2)}
-                    cv2.circle(frame, (int(x), int(y)), int(radius), DISPLAY_COLORS["white"], 2)
-                    # cv2.circle(frame, center, int(radius)/4, colors[key], 1)
-                    cv2.putText(frame, "white", (int(x - radius), int(y - radius)), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, DISPLAY_COLORS["white"], 2)
+            c = max(cnts, key=cv2.contourArea)
+            # for c in cnts:
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            # print(radius)
+            M = cv2.moments(c)
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            if radius > 10:
+                # draw the circle and centroid on the frame,
+                # then update the list of tracked points
+                circle_ds["target"] = {"center": [int(x), int(y)], "area": 3.14 * (radius**2)}
+                cv2.circle(frame, (int(x), int(y)), int(radius), DISPLAY_COLORS["white"], 2)
+                # cv2.circle(frame, center, int(radius)/4, colors[key], 1)
+                cv2.putText(frame, "target", (int(x - radius), int(y - radius)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, DISPLAY_COLORS["target"], 2)
 
-                    color_blobs.append({'color': "white", "center": center, "area": M["m00"], "radius": radius})
+                color_blobs.append({'color': "target", "center": center, "area": M["m00"], "radius": radius})
 
         color_blobs = sorted(color_blobs, key=lambda x: x['center'][1], reverse=True)
         frame_count += 1
         if frame_count == SAMPLE_EVERY:
             print(color_blobs)
+
+        client.send_message('/{}'.format(i[0]), str(i[1]['area']))
         # print([cb['color'] for cb in color_blobs])
 
         # lineVerify = checkIfInLine(circle_ds, 20)
@@ -104,4 +105,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--camera", type=int, help="which camera to use")
+    args = parser.parse_args()
+    main(args.camera)
