@@ -7,12 +7,16 @@ let samples;
 let maxBoids = 250;
 let maxCollisions = 25;
 
-let maxOSCClient = new OSCClient("ws://localhost:8081")
-let botOSCClient = new OSCClient("ws://localhost:8082")
-
-// let bot_addresses = ['/elbow', '/wrist', '/finger'];
-
 let looping = true;
+
+let cursorX = cursorY = 0;
+let painting = false;
+
+let next = 100;
+
+let oscClient = new OSCClient("ws://localhost:8081")
+// let botOSCClient = new OSCClient("ws://localhost:8082")
+// let bot_addresses = ['/elbow', '/wrist', '/finger'];
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
@@ -27,6 +31,19 @@ function setup() {
         flock.addBoid(b);
     }
     newColor();
+
+    oscClient.map('/cursorOn', (path, args) => {
+        cursorX = map(1 - args[0], 0, 1, 0, width);
+        cursorY = map(args[1], 0, 1, 0, height);
+        console.log('received cursorOn message');
+        if (!painting)
+            cursorOn();
+    });
+
+    oscClient.map('/cursorOff', (args) => {
+        if (painting)
+            cursorOff();
+    });
     // Create the arm
     // virtualArm = new VirtualArm();
     // botOSCClient.send('/test', [1, 2, 3]);
@@ -34,20 +51,39 @@ function setup() {
 
 function draw() {
     background(51);
+    if (painting) 
+        cursorDragged();
     flock.run();
     // virtualArm.run();
 }
 
-function mouseClicked() {
-    // sample.play();
+function cursorOn() {
     newColor();
     idCounter += 1;
+    painting = true;
 }
 
-// Add a new boid into the System
-function mouseDragged() {
-    flock.addBoid(new Boid(mouseX, mouseY, boidColor, idCounter));
+function cursorOff() {
+    painting = false;
 }
+
+function cursorDragged() {
+    if (millis() > next) {
+        flock.addBoid(new Boid(cursorX, cursorY, boidColor, idCounter));
+        next = millis() + random(10);
+    }
+}
+
+// function mouseClicked() {
+//     // sample.play();
+//     newColor();
+//     idCounter += 1;
+// }
+
+// // Add a new boid into the System
+// function mouseDragged() {
+//     flock.addBoid(new Boid(mouseX, mouseY, boidColor, idCounter));
+// }
 
 function keyPressed() {
     if (keyCode === ENTER && looping) {
@@ -86,7 +122,7 @@ function VirtualArm() {
 }
 
 VirtualArm.prototype.run = function() {
-    this.reachSegment(0, mouseX, mouseY);
+    this.reachSegment(0, cursorX, cursorY);
     for (let i = 1; i < this.numSegments; i++) {
         this.reachSegment(i, this.targetX, this.targetY);
     }
@@ -96,7 +132,7 @@ VirtualArm.prototype.run = function() {
     for (let k = 0; k < this.x.length; k++) {
         this.segment(this.x[k], this.y[k], this.angle[k], (k + 1) * 2);
     }
-    this.reachSegment(0, mouseX, mouseY);
+    this.reachSegment(0, cursorX, cursorY);
     for (let i = 1; i < this.numSegments; i++) {
         this.reachSegment(i, this.targetX, this.targetY);
     }
@@ -513,14 +549,14 @@ Collision.prototype.run = function(){
 
 Collision.prototype.play = function() {
     this.animating = true;
-    maxOSCClient.send('/boids', [this.position.x, this.position.y, this.sendNum, 1 - this.getAge()]);
+    oscClient.send('/boids', [this.position.x, this.position.y, this.sendNum, 1 - this.getAge()]);
 }
 
 Collision.prototype.replay = function() {
     console.log('entered replay function');
     // if (this.time > 30) this.time -= 30;
     this.animating = true;
-    maxOSCClient.send('/boids', [this.position.x, this.position.y, this.sendNum, 1 - this.getAge()]);
+    oscClient.send('/boids', [this.position.x, this.position.y, this.sendNum, 1 - this.getAge()]);
     // os.log(this.getAge());
 }
 

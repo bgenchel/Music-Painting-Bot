@@ -8,15 +8,11 @@ import json
 from pythonosc import osc_message_builder
 from pythonosc import udp_client
 
-SAMPLE_EVERY = 10 # Frame Reads
+SAMPLE_EVERY = 1 # Frame Reads
 
-# COLOR_THRESHOLDS = {'red': {'lower': (10, 0, 62), 'upper': (50, 43, 102)},
-#                     'green': {'lower': (15, 95, 12), 'upper': (50, 140, 50)},
-#                     'blue': {'lower': (80, 37, 6), 'upper': (117, 60, 40)},
-#                     'orange': {'lower': (3, 0, 70), 'upper': (20, 30, 135)}}
-
-COLOR_THRESHOLD = {'lower': (150, 200, 200), 'upper': (255, 255, 255)}
+COLOR_THRESHOLD = {'lower': (65, 45, 200), 'upper': (95, 75, 255)}
 DISPLAY_COLORS = {'target': (255, 255, 255)}
+
 circle_ds = {"target": {"center": [0, 0], "area": 0}}
 
 def conform(value, threshold, min):
@@ -40,14 +36,16 @@ def process_data(cblobs_list):
 
 def main(camera_num):
     camera = cv2.VideoCapture(camera_num)
-    client = udp_client.SimpleUDPClient('127.0.0.1', 5005)
+    client = udp_client.SimpleUDPClient('127.0.0.1', 6000)
+
     frame_count = 0
+    sendOn = False
     while True:
         grabbed, frame = camera.read()
-
         frame = imutils.resize(frame, width=500)
+        height, width = frame.shape[:-1]
         lab = lab_contrast_increase(frame)
-        cv2.imshow('lab', lab)
+        # cv2.imshow('lab', lab)
 
         color_blobs = []
         # for color, thresholds in COLOR_THRESHOLDS.items():
@@ -58,8 +56,9 @@ def main(camera_num):
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
         center = None
         cv2.drawContours(lab, cnts, -1, (0, 255, 0), 3)
-        cv2.imshow('mask', lab)
+        # cv2.imshow('mask', lab)
         if len(cnts) > 0:
+            sendOn = True
             c = max(cnts, key=cv2.contourArea)
             # for c in cnts:
             ((x, y), radius) = cv2.minEnclosingCircle(c)
@@ -69,31 +68,28 @@ def main(camera_num):
             if radius > 10:
                 # draw the circle and centroid on the frame,
                 # then update the list of tracked points
-                circle_ds["target"] = {"center": [int(x), int(y)], "area": 3.14 * (radius**2)}
-                cv2.circle(frame, (int(x), int(y)), int(radius), DISPLAY_COLORS["white"], 2)
+                circle_ds["target"] = {"center": [x / width, y / height], "area": 3.14 * (radius**2)}
+                cv2.circle(frame, (int(x), int(y)), int(radius), DISPLAY_COLORS["target"], 2)
                 # cv2.circle(frame, center, int(radius)/4, colors[key], 1)
                 cv2.putText(frame, "target", (int(x - radius), int(y - radius)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, DISPLAY_COLORS["target"], 2)
 
-                color_blobs.append({'color': "target", "center": center, "area": M["m00"], "radius": radius})
+                # color_blobs.append({'color': "target", "center": center, "area": M["m00"], "radius": radius})
+        else:
+            sendOn = False
 
-        color_blobs = sorted(color_blobs, key=lambda x: x['center'][1], reverse=True)
+        # color_blobs = sorted(color_blobs, key=lambda x: x['center'][1], reverse=True)
         frame_count += 1
         if frame_count == SAMPLE_EVERY:
-            print(color_blobs)
+            if sendOn:
+                print('sendOn: {}'.format(circle_ds['target']['center']))
+                client.send_message('/cursorOn', circle_ds['target']['center'])
+            else:
+                print('sendOff')
+                client.send_message('/cursorOff', [])
+            frame_count = 0
 
-        client.send_message('/{}'.format(i[0]), str(i[1]['area']))
-        # print([cb['color'] for cb in color_blobs])
-
-        # lineVerify = checkIfInLine(circle_ds, 20)
-        # if lineVerify == True:
-        #     for i in circle_ds.items():
-        #         print(i[0], i[1])
-        #         client.send_message('/{}'.format(i[0]), str(i[1]['area']))
-        #         client.send_message('/{}/{}'.format(i[0], "center"), str(i[1]['center']))
-        # show the frame to our screen
         cv2.imshow("Frame", frame)
-
         key = cv2.waitKey(1) & 0xFF
         # if the 'q' key is pressed, stop the loop
         if key == ord("q"):

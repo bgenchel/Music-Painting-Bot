@@ -25,15 +25,16 @@ let increasing = true;
 let trailViz = 5;
 let trailVizUpdateIncr = 0.1;
 
-let painting = false; // true if mouse held down
-
 let streamRate = 200; // for streaming data, only send every 100ms
 let lastStream = 0;
 let okToStream = false;
 
 let looping = true;
 
-let maxOSCClient = new OSCClient("ws://localhost:8081");
+let cursorX = cursorY = 0;
+let painting = false; // true if mouse held down
+
+let oscClient = new OSCClient("ws://localhost:8081");
 
 function setup() {
     baseColor = color(0, 0, 0);
@@ -45,6 +46,19 @@ function setup() {
 
     noStroke();
     fill(baseColor); 
+
+    oscClient.map('/cursorOn', (path, args) => {
+        cursorX = map(1 - args[0], 0, 1, 0, width);
+        cursorY = map(args[1], 0, 1, 0, height);
+        console.log('received cursorOn message');
+        if (!painting)
+            cursorOn();
+    });
+
+    oscClient.map('/cursorOff', (args) => {
+        if (painting)
+            cursorOff();
+    });
 }
 
 function draw() {
@@ -56,8 +70,8 @@ function draw() {
     updateTrailViz();
     background(255, trailViz);
 
-    dMouseX = min(maxMouseVel, max(-maxMouseVel, (mouseX - prevMouseX) / 2));
-    dMouseY = min(maxMouseVel, max(-maxMouseVel, (mouseY - prevMouseY) / 2));
+    dMouseX = min(maxMouseVel, max(-maxMouseVel, (cursorX - prevMouseX) / 2));
+    dMouseY = min(maxMouseVel, max(-maxMouseVel, (cursorY - prevMouseY) / 2));
     
     avgOverallMotion = 0;
     balls.forEach((ball, index) => {
@@ -70,10 +84,10 @@ function draw() {
     });
     avgOverallMotion /= balls.length;
     if (okToStream)
-        maxOSCClient.send('/collider/avgOverallMotion', [avgOverallMotion]);
+        oscClient.send('/collider/avgOverallMotion', [avgOverallMotion]);
 
-    prevMouseX = mouseX;
-    prevMouseY = mouseY;
+    prevMouseX = cursorX;
+    prevMouseY = cursorY;
     
     if (millis() > prevChange + changeTime) {
         prevMouseColor = nextMouseColor;
@@ -83,8 +97,8 @@ function draw() {
     
     currMouseColor = lerpColor(prevMouseColor, nextMouseColor, (millis() - prevChange) / changeTime);
     if (painting && okToStream){
-        maxOSCClient.send('/collider/cursorInfo', [
-            mouseX / width, mouseY / height,
+        oscClient.send('/collider/cursorInfo', [
+            cursorX / width, cursorY / height,
             red(currMouseColor) / 255,
             blue(currMouseColor) / 255,
             green(currMouseColor) / 255
@@ -95,22 +109,30 @@ function draw() {
     for (var i = 0; i < feathering; ++i) {
         currMouseColor.setAlpha(100 * (1 - (i / feathering)));
         fill(currMouseColor);
-        ellipse(mouseX, mouseY, mouseDiam * (i / feathering) , mouseDiam * (i / feathering));
+        ellipse(cursorX, cursorY, mouseDiam * (i / feathering) , mouseDiam * (i / feathering));
     }
     currMouseColor.setAlpha(255);
 
     okToStream = false;
 }
 
-function mousePressed() {
+function cursorOn () {
     painting = true;
-    return false;
 }
 
-function mouseReleased() {
+function cursorOff () {
     painting = false;
-    return false;
 }
+
+// function mousePressed() {
+//     painting = true;
+//     return false;
+// }
+
+// function mouseReleased() {
+//     painting = false;
+//     return false;
+// }
 
 function keyPressed() {
     if (keyCode === ENTER && looping) {
@@ -136,7 +158,7 @@ function updateTrailViz() {
         if (trailViz < 8) 
             increasing = true;
     }
-    maxOSCClient.send('/collider/visDensity', [trailViz]);
+    oscClient.send('/collider/visDensity', [trailViz]);
 }
 
 class Ball {
@@ -182,7 +204,7 @@ class Ball {
                 if (velMag > 5) {
                     this.others[i].color = this.color;
                     if (okToStream) {
-                        maxOSCClient.send('/collider/collisionColorTransfer', [
+                        oscClient.send('/collider/collisionColorTransfer', [
                             (this.x + this.others[i].x) / 2,
                             (this.y + this.others[i].y) / 2,
                             velMag,
@@ -197,8 +219,8 @@ class Ball {
     }
 
     mouseCollide() {
-        let dx = (mouseX - this.x);
-        let dy = (mouseY - this.y);
+        let dx = (cursorX - this.x);
+        let dy = (cursorY - this.y);
         let distance = sqrt(dx * dx + dy * dy);
         let minDist = 2 * ballDiam;
         //     console.log(distance);
@@ -208,8 +230,8 @@ class Ball {
             let angle = atan2(dy, dx);
             let targetX = this.x + cos(angle) * minDist;
             let targetY = this.y + sin(angle) * minDist;
-            let ax = (targetX - mouseX) * spring;
-            let ay = (targetY - mouseY) * spring;
+            let ax = (targetX - cursorX) * spring;
+            let ay = (targetY - cursorY) * spring;
             this.vx -= ax;
             this.vy -= ay;
             
@@ -222,9 +244,9 @@ class Ball {
             if (velMag > 3) {
                 this.color = currMouseColor;
                 if (okToStream) {
-                    maxOSCClient.send('/collider/cursorColorTransfer', [
-                        (this.x + mouseX) / 2,
-                        (this.y + mouseY) / 2,
+                    oscClient.send('/collider/cursorColorTransfer', [
+                        (this.x + cursorX) / 2,
+                        (this.y + cursorY) / 2,
                         velMag,
                         red(this.color) / 255,
                         blue(this.color) / 255,

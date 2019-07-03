@@ -22,9 +22,17 @@ function setup() {
     previous = createVector(0,0);
     hitHeight = 0.1 * height;
 
-    oscClient.map('/cursor', (args) => {
-        cursorX = args[0];
-        cursorY = args[1];
+    oscClient.map('/cursorOn', (path, args) => {
+        cursorX = map(1 - args[0], 0, 1, 0, width);
+        cursorY = map(args[1], 0, 1, 0, height);
+        console.log('received cursorOn message');
+        if (!painting)
+            cursorOn();
+    });
+
+    oscClient.map('/cursorOff', (args) => {
+        if (painting)
+            cursorOff();
     });
 }
 
@@ -34,14 +42,14 @@ function draw() {
     // draw limit line
     stroke(color(255, 255, 255));
     line(width / 5, hitHeight, width * 4 / 5, hitHeight);
-    noStroke
 
     // If it's time for a new point
     if (millis() > next && painting) {
 
         // Grab mouse position            
-        current.x = mouseX;
-        current.y = mouseY;
+        current.x = cursorX;
+        current.y = cursorY;
+        console.log('doing the thing');
 
         // New particle's force is based on mouse movement
         var force = p5.Vector.sub(current, previous);
@@ -51,7 +59,7 @@ function draw() {
         paths[paths.length - 1].add(current, force);
         
         // Schedule next circle
-        next = millis() + random(5);
+        next = millis() + random(10);
 
         // Store mouse values
         previous.x = current.x;
@@ -65,19 +73,31 @@ function draw() {
     }
 }
 
-// Start it up
-function mousePressed() {
+function cursorOn() {
     next = 0;
     painting = true;
-    previous.x = mouseX;
-    previous.y = mouseY;
+    previous.x = cursorX;
+    previous.y = cursorY;
     paths.push(new Path());
 }
 
-// Stop
-function mouseReleased() {
+function cursorOff() {
     painting = false;
 }
+
+// // Start it up
+// function mousePressed() {
+//     next = 0;
+//     painting = true;
+//     previous.x = mouseX;
+//     previous.y = mouseY;
+//     paths.push(new Path());
+// }
+
+// // Stop
+// function mouseReleased() {
+//     painting = false;
+// }
 
 function keyPressed() {
     if (keyCode === ENTER && looping) {
@@ -155,6 +175,7 @@ Particle.prototype.update = function() {
 // Draw particle and connect it with a line
 // Draw a line to another
 Particle.prototype.display = function(other) {
+    // console.log('display the fucking particle');
     noStroke();
     fill(255, 255 * max(0, (1 - 1.2 * this.age / this.lifespan)));        
     ellipse(this.position.x, this.position.y - (this.age * 2), this.size + this.age / 8, this.size);        

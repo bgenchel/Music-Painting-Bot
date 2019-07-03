@@ -33,7 +33,8 @@ let lastPaintedCoor;
 
 let looping = true;
 
-let maxOSCClient = new OSCClient("ws://localhost:8081");
+let cursorX = cursorY = 0;
+let oscClient = new OSCClient("ws://localhost:8081");
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
@@ -45,6 +46,19 @@ function setup() {
     lastPaintedCoor = createVector(0, 0);
     
     grid = new Grid(spacing);
+
+    oscClient.map('/cursorOn', (path, args) => {
+        cursorX = map(1 - args[0], 0, 1, 0, width);
+        cursorY = map(args[1], 0, 1, 0, height);
+        console.log('received cursorOn message');
+        if (!painting)
+            cursorOn();
+    });
+
+    oscClient.map('/cursorOff', (args) => {
+        if (painting)
+            cursorOff();
+    });
 }
 
 function draw() {
@@ -58,28 +72,37 @@ function draw() {
 
     updateEffect();
     if (okToStream) {
-        let center = painting ? createVector(mouseX, mouseY) : lastPaintedCoor;
-        maxOSCClient.send('/waves/effectInfo', [center.x / width, center.y / height, effect_dist]);
+        let center = painting ? createVector(cursorX, cursorY) : lastPaintedCoor;
+        oscClient.send('/waves/effectInfo', [center.x / width, center.y / height, effect_dist]);
     }
 
     grid.run();
 
     if (okToStream)
-        maxOSCClient.send('/waves/cursorInfo', [mouseX / width, mouseY / height, painting]);
+        oscClient.send('/waves/cursorInfo', [cursorX / width, cursorY / height, painting]);
 
     okToStream = false;
 }
 
-function mousePressed() {
+function cursorOn() {
     painting = true;
-    return false;
 }
 
-function mouseReleased() {
+function cursorOff() {
     painting = false;
-    lastPaintedCoor = createVector(mouseX, mouseY);
-    return false;
+    lastPaintedCoor = createVector(cursorX, cursorY);
 }
+
+// function mousePressed() {
+//     painting = true;
+//     return false;
+// }
+
+// function mouseReleased() {
+//     painting = false;
+//     lastPaintedCoor = createVector(mouseX, mouseY);
+//     return false;
+// }
 
 function keyPressed() {
     if (keyCode === ENTER && looping) {
@@ -144,7 +167,7 @@ Grid.prototype.run = function() {
     if (totalMarked > 0) 
         markedCenter.div(totalMarked)
     if (okToStream)
-        maxOSCClient.send('/waves/paintInfo', [markedCenter.x, markedCenter.y, totalMarked / this.particles.length]);
+        oscClient.send('/waves/paintInfo', [markedCenter.x, markedCenter.y, totalMarked / this.particles.length]);
     t += 0.01;
 }
 
@@ -174,7 +197,7 @@ Particle.prototype.getFade = function() {
 Particle.prototype.run = function() {
     const curr_pos = this.get_position();
     
-    const pdist = this.center.dist(createVector(mouseX, mouseY));
+    const pdist = this.center.dist(createVector(cursorX, cursorY));
     this.set_effect(pdist);
     this.set_color(pdist);
 
@@ -185,8 +208,8 @@ Particle.prototype.run = function() {
 
 Particle.prototype.get_position = function() {
     // starting point of each circle depends on mouse position
-    const xAngle = map(mouseX, 0, width, -4 * PI, 4 * PI, true);
-    const yAngle = map(mouseY, 0, height, -4 * PI, 4 * PI, true);
+    const xAngle = map(cursorX, 0, width, -4 * PI, 4 * PI, true);
+    const yAngle = map(cursorY, 0, height, -4 * PI, 4 * PI, true);
     // and also varies based on the particle's location
     const angle = xAngle * (this.center.x / width) + yAngle * (this.center.y / height);
 
