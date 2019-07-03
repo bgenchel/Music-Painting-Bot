@@ -14,8 +14,8 @@ let amplitude;
 let mapMax = 1.0;
 
 let prevLevels = new Array(60);
-let level_buff = new Array(30);
-let freq_buff = new Array(30);
+let levelBuff = new Array(30);
+let freqBuff = new Array(30);
 
 let preNormalize = true;
 let postNormalize = true;
@@ -46,10 +46,11 @@ function setup() {
     amplitude.smooth(0.6);
     
     // fft
-    lowPass = new p5.LowPass();
-    lowPass.disconnect();
-    mic.connect(lowPass);
+    // lowPass = new p5.LowPass();
+    // lowPass.disconnect();
+    // mic.connect(lowPass);
     fft = new p5.FFT();
+    fft.setInput(mic);
     peakDetect = new p5.PeakDetect();
 
     currPoint = createVector(width / 2, height / 2);
@@ -60,13 +61,17 @@ function setup() {
 function draw() {
     background(51);
 
+    let freq = getFreq();
+    let amplitude = getAmp();
+
     let spectrum = fft.analyze();
     peakDetect.update(fft);
 
     let bands = fft.getOctaveBands(12, 27.5);
     let logAvgs = fft.logAverages(bands).slice(0, 88);
 
-    let specPeaks = findPeaks(logAvgs);
+    let specPeaks = findPeaks(logAvgs, 4, 20);
+    // console.log(specPeaks);
 
     const third = logAvgs.length / 3;
     let low = logAvgs.slice(0, int(third));
@@ -76,38 +81,51 @@ function draw() {
     let centroid = fft.getCentroid() / bands[87]; // normalize between 0 and 1
     let centroidEnergy = fft.getEnergy(centroid);
 
-    let freq = getFreq();
-    let amplitude = getAmp();
-
     if (millis() > prevPointCalc + pointCalcPeriod || peakDetect.isDetected)
-        getNextPoint(specCentroid, logAvgs, low, med, high, freq, amplitude, peakDetect.isDetected);
-    virtualArm.run(arm_level * 200, arm_freq);
+        getNextPoint(centroid, centroidEnergy, logAvgs, low, med, high, freq, amplitude, peakDetect.isDetected);
+
+    virtualArm.run(amplitude * 1000, freq);
 }
 
 function getNextPoint(specCent, specCentEnergy, eqTempLevels, lowLevel, medLevel, highLevel, freq, amp, isPeak) {
 
 }
 
+function findPeaks(spectrogram, width, thresh) {
+    let peaks = [];
+    let halfwidth = int(width / 2);
+    for (var i = halfwidth + 1; i < spectrogram.length - width; i++) {
+        if (spectrogram[i] - thresh > spectrogram[i - halfwidth] && 
+            spectrogram[i] - thresh > spectrogram[i + halfwidth]) {
+            peaks.push(i);
+        }
+    }
+    return peaks;
+}
+
 function getFreq() {
     let timeDomain = fft.waveform(1024, 'float32');
+    // console.log(Array.from(timeDomain).sum());
     let corrBuff = autoCorrelate(timeDomain);
     let freq = findFrequency(corrBuff);
-    freq_buff.push(freq);
-    freq_buff.splice(0, 1); // delete oldest freq
+    freqBuff.push(freq);
+    freqBuff.splice(0, 1); // delete oldest freq
 
-    let arm_freq = freq_buff.sum() / freq_buff.length;
+    const sum = arr => arr.reduce((a, b) => a + b, 0);
+    let arm_freq = freqBuff.sum() / freqBuff.length;
     fill(color(0, 0, 255));
     text('arm_Freq: ' + arm_freq, 20, 80);
+    // console.log(arm_freq);
     return arm_freq;
 }
 
 function getAmp() {
     // level detect
     let level = amplitude.getLevel();
-    level_buff.push(level);
-    level_buff.splice(0, 1);
+    levelBuff.push(level);
+    levelBuff.splice(0, 1);
 
-    let arm_level = level_buff.sum() / level_buff.length;
+    let arm_level = levelBuff.sum() / levelBuff.length;
     fill(color(255, 0, 0));
     text('arm_Amplitude: ' + arm_level, 20, 50);
     return arm_level;
@@ -116,7 +134,6 @@ function getAmp() {
 /////// Auto corr pitch track /////////
 // accepts a timeDomainBuffer and multiplies every value
 function autoCorrelate(timeDomainBuffer) {
-  
   var nSamples = timeDomainBuffer.length;
 
   // pre-normalize the input buffer

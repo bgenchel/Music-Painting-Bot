@@ -7,7 +7,7 @@ let samples;
 let maxBoids = 250;
 let maxCollisions = 25;
 
-let midiOSCClient = new OSCClient("ws://localhost:8081")
+let maxOSCClient = new OSCClient("ws://localhost:8081")
 let botOSCClient = new OSCClient("ws://localhost:8082")
 
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
@@ -27,15 +27,14 @@ function setup() {
     }
     newColor();
     // Create the arm
-    virtualArm = new VirtualArm();
-
-    botOSCClient.send('/test', [1, 2, 3]);
+    // virtualArm = new VirtualArm();
+    // botOSCClient.send('/test', [1, 2, 3]);
 }
 
 function draw() {
     background(51);
     flock.run();
-    virtualArm.run();
+    // virtualArm.run();
 }
 
 function mouseClicked() {
@@ -414,7 +413,7 @@ Boid.prototype.handleCollisions = function(boids, cid) {
         let d = p5.Vector.dist(this.position, boids[i].position);
         if ((d > 0) && (d < collDist)) {
                 let coll_pos = p5.Vector.add(this.position, boids[i].position).mult(0.5);
-                let newColl = new Collision(coll_pos.x, coll_pos.y, int(random(note_nums.length)));
+                let newColl = new Collision(coll_pos.x, coll_pos.y, random(8));
                 newColl.setAge((age + other_age) / 2);
                 flock.addCollision(newColl);
 
@@ -503,14 +502,14 @@ Collision.prototype.run = function(){
 
 Collision.prototype.play = function() {
     this.animating = true;
-    midiOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    maxOSCClient.send('/boids', [this.position.x, this.position.y, this.sendNum, 1 - this.getAge()]);
 }
 
 Collision.prototype.replay = function() {
     console.log('entered replay function');
     // if (this.time > 30) this.time -= 30;
     this.animating = true;
-    midiOSCClient.send('/play', [note_nums[this.sendNum], 1 - this.getAge()]);
+    maxOSCClient.send('/boids', [this.position.x, this.position.y, note_nums[this.sendNum], 1 - this.getAge()]);
     // os.log(this.getAge());
 }
 
