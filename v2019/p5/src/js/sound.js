@@ -363,11 +363,11 @@ VirtualArm.prototype.run = function(level, freq) {
         console.log('segment ' + segment + ' angle: ' + angleTwo);
         botOSCClient.send(bot_addresses[segment], [segment, angleTwo, 0.1]);
 
-        segment = 3;
+        // segment = 3;
         // baseAngle = prevBaseAngle +  random([1,-1]) *random(10);
-        baseAngle = (angleTwo + angleOne) / 2;
-        console.log('segment ' + segment + ' angle: ' + baseAngle);
-        botOSCClient.send(bot_addresses[segment], [segment, baseAngle, 0.1]);
+        // baseAngle = (angleTwo + angleOne) / 2;
+        // console.log('segment ' + segment + ' angle: ' + baseAngle);
+        // botOSCClient.send(bot_addresses[segment], [segment, baseAngle, 0.1]);
         // for (let s = 0; s < this.numSegments; s++) {
             // console.log('segment: ' + s + ' angle: ' + limitAngle(radToDeg(-this.angle[s])));
             // botOSCClient.send(bot_addresses[s], [s, limitAngle(radToDeg(-this.angle[s])), 0.1]);
