@@ -31,6 +31,8 @@ let okToStream = false;
 
 let lastPaintedCoor;
 
+let looping = true;
+
 let maxOSCClient = new OSCClient("ws://localhost:8081");
 
 function setup() {
@@ -77,6 +79,16 @@ function mouseReleased() {
     painting = false;
     lastPaintedCoor = createVector(mouseX, mouseY);
     return false;
+}
+
+function keyPressed() {
+    if (keyCode === ENTER && looping) {
+        noLoop();
+        looping = false;
+    } else if (keyCode === ENTER && !looping) {
+        loop();
+        looping = true;
+    }
 }
 
 function updateTrailVis() {

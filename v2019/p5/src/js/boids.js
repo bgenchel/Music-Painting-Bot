@@ -11,7 +11,9 @@ let maxOSCClient = new OSCClient("ws://localhost:8081")
 let botOSCClient = new OSCClient("ws://localhost:8082")
 
 let note_nums = [0, 1, 2, 3, 4, 5, 6, 7];
-let bot_addresses = ['/elbow', '/wrist', '/finger'];
+// let bot_addresses = ['/elbow', '/wrist', '/finger'];
+
+let looping = true;
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
@@ -48,6 +50,16 @@ function mouseDragged() {
     flock.addBoid(new Boid(mouseX, mouseY, boidColor, idCounter));
 }
 
+function keyPressed() {
+    if (keyCode === ENTER && looping) {
+        noLoop();
+        looping = false;
+    } else if (keyCode === ENTER && !looping) {
+        loop();
+        looping = true;
+    }
+}
+
 function newColor() {
     boidColor = color(random(255),random(255),random(255));
 }
@@ -70,8 +82,8 @@ function VirtualArm() {
     this.x[this.x.length - 1] = window.innerWidth / 2; // Set base x-coordinate
     this.y[this.x.length - 1] = window.innerHeight; // Set base y-coordinate
 
-    this.sendTimer = 0;
-    this.sendFreq = 60;
+    // this.sendTimer = 0;
+    // this.sendFreq = 60;
 }
 
 VirtualArm.prototype.run = function() {
@@ -96,14 +108,14 @@ VirtualArm.prototype.run = function() {
         this.segment(this.x[k], this.y[k], this.angle[k], (k + 1) * 2);
     }
 
-    this.sendTimer++;
-    if (this.sendTimer >= this.sendFreq) {
-        this.sendTimer = 0;
-        for (let s = 0; s < this.numSegments; s++) {
-            console.log('segment: ' + s + 'angle: ' + this.angle[s]);
-            botOSCClient.send(bot_addresses[s], [s, -this.angle[s] * (180 / 3.14159), 0.5]);
-        }
-    }
+    // this.sendTimer++;
+    // if (this.sendTimer >= this.sendFreq) {
+    //     this.sendTimer = 0;
+    //     for (let s = 0; s < this.numSegments; s++) {
+    //         console.log('segment: ' + s + 'angle: ' + this.angle[s]);
+    //         botOSCClient.send(bot_addresses[s], [s, -this.angle[s] * (180 / 3.14159), 0.5]);
+    //     }
+    // }
 }
 
 
@@ -413,7 +425,7 @@ Boid.prototype.handleCollisions = function(boids, cid) {
         let d = p5.Vector.dist(this.position, boids[i].position);
         if ((d > 0) && (d < collDist)) {
                 let coll_pos = p5.Vector.add(this.position, boids[i].position).mult(0.5);
-                let newColl = new Collision(coll_pos.x, coll_pos.y, random(8));
+                let newColl = new Collision(coll_pos.x, coll_pos.y, int(random(8)));
                 newColl.setAge((age + other_age) / 2);
                 flock.addCollision(newColl);
 
@@ -509,7 +521,7 @@ Collision.prototype.replay = function() {
     console.log('entered replay function');
     // if (this.time > 30) this.time -= 30;
     this.animating = true;
-    maxOSCClient.send('/boids', [this.position.x, this.position.y, note_nums[this.sendNum], 1 - this.getAge()]);
+    maxOSCClient.send('/boids', [this.position.x, this.position.y, this.sendNum, 1 - this.getAge()]);
     // os.log(this.getAge());
 }
 

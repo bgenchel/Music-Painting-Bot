@@ -31,6 +31,8 @@ let streamRate = 200; // for streaming data, only send every 100ms
 let lastStream = 0;
 let okToStream = false;
 
+let looping = true;
+
 let maxOSCClient = new OSCClient("ws://localhost:8081");
 
 function setup() {
@@ -108,6 +110,16 @@ function mousePressed() {
 function mouseReleased() {
     painting = false;
     return false;
+}
+
+function keyPressed() {
+    if (keyCode === ENTER && looping) {
+        noLoop();
+        looping = false;
+    } else if (keyCode === ENTER && !looping) {
+        loop();
+        looping = true;
+    }
 }
 
 function getRandomColor() {

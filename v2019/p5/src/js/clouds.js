@@ -10,8 +10,9 @@ let previous;
 
 let hitHeight;
 
+let looping = true;
+
 let maxOSCClient = new OSCClient("ws://localhost:8081")
-let botOSCClient = new OSCClient("ws://localhost:8082")
 
 function setup() {
     createCanvas(window.innerWidth, window.innerHeight);
@@ -69,6 +70,16 @@ function mousePressed() {
 // Stop
 function mouseReleased() {
     painting = false;
+}
+
+function keyPressed() {
+    if (keyCode === ENTER && looping) {
+        noLoop();
+        looping = false;
+    } else if (keyCode === ENTER && !looping) {
+        loop();
+        looping = true;
+    }
 }
 
 // A Path is a list of particles
